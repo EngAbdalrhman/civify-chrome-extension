@@ -8,12 +8,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     const creditsBadge = document.getElementById("credits-badge");
     const logoutBtn = document.getElementById("logout-btn");
     
+    // Settings
+    const settingsBtn = document.getElementById("settings-btn");
+    const settingsOverlay = document.getElementById("settings-overlay");
+    const closeSettingsBtn = document.getElementById("close-settings");
+    const toggleBtns = document.querySelectorAll(".toggle-btn");
+    
     // Tabs
     const tabBtns = document.querySelectorAll(".tab-btn");
     
     // Mask Tab
     const maskDropZone = document.getElementById("mask-drop-zone");
     const maskFileInput = document.getElementById("mask-file-input");
+    const maskBrowseBtn = document.getElementById("mask-browse-btn");
     const maskFileInfo = document.getElementById("mask-file-info");
     const maskFilename = document.getElementById("mask-filename");
     const maskRemoveFile = document.getElementById("mask-remove-file");
@@ -22,6 +29,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Tailor Tab
     const tailorDropZone = document.getElementById("tailor-drop-zone");
     const tailorFileInput = document.getElementById("tailor-file-input");
+    const tailorBrowseBtn = document.getElementById("tailor-browse-btn");
     const tailorFileInfo = document.getElementById("tailor-file-info");
     const tailorFilename = document.getElementById("tailor-filename");
     const tailorRemoveFile = document.getElementById("tailor-remove-file");
@@ -37,20 +45,86 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // --- Initialization ---
     try {
-        const result = await chrome.storage.local.get(["apiKey", "userProfile"]);
+        const result = await chrome.storage.local.get(["apiKey", "userProfile", "theme", "lang"]);
+        
+        // Apply persisted settings
+        applyTheme(result.theme || "dark");
+        I18n.init(result.lang || "en");
+        updateToggleStates(result.theme || "dark", result.lang || "en");
+
         if (result.apiKey) {
             showMainView(result.userProfile);
         } else {
             showAuthView();
         }
     } catch (e) {
+        console.error("Initialization error:", e);
         showAuthView();
+        // Fallback defaults
+        applyTheme("dark");
+        I18n.init("en");
+    }
+
+    // --- Settings Logic ---
+    if (settingsBtn) {
+        settingsBtn.addEventListener("click", () => {
+            settingsOverlay.classList.remove("hidden");
+        });
+    }
+
+    if (closeSettingsBtn) {
+        closeSettingsBtn.addEventListener("click", () => {
+            settingsOverlay.classList.add("hidden");
+        });
+    }
+
+    // Close settings when clicking outside panel
+    if (settingsOverlay) {
+        settingsOverlay.addEventListener("click", (e) => {
+            if (e.target === settingsOverlay) {
+                settingsOverlay.classList.add("hidden");
+            }
+        });
+    }
+
+    toggleBtns.forEach(btn => {
+        btn.addEventListener("click", async () => {
+            const setting = btn.dataset.setting;
+            const value = btn.dataset.value;
+
+            // Update UI state
+            document.querySelectorAll(`.toggle-btn[data-setting="${setting}"]`).forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+
+            // Apply setting
+            if (setting === "theme") {
+                applyTheme(value);
+                await chrome.storage.local.set({ theme: value });
+            } else if (setting === "lang") {
+                I18n.applyLanguage(value);
+                await chrome.storage.local.set({ lang: value });
+                // Re-update button state in case text changed/reflowed
+                updateBtnState(); 
+            }
+        });
+    });
+
+    function applyTheme(theme) {
+        document.body.setAttribute("data-theme", theme);
+    }
+    
+    function updateToggleStates(theme, lang) {
+        document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
+        const themeBtn = document.querySelector(`.toggle-btn[data-setting="theme"][data-value="${theme}"]`);
+        const langBtn = document.querySelector(`.toggle-btn[data-setting="lang"][data-value="${lang}"]`);
+        if (themeBtn) themeBtn.classList.add('active');
+        if (langBtn) langBtn.classList.add('active');
     }
 
     // --- Auth Logic ---
     loginBtn.addEventListener("click", async () => {
         const key = apiKeyInput.value.trim();
-        if (!key) return showError("Please enter an API Key");
+        if (!key) return showError(I18n.t("errorApiKey"));
         
         setLoading(loginBtn, true);
         try {
@@ -59,7 +133,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             showMainView(profile);
             apiKeyInput.value = "";
         } catch (e) {
-            showError(e.message || "Invalid API Key");
+            showError(e.message || I18n.t("errorInvalidKey"));
         } finally {
             setLoading(loginBtn, false);
         }
@@ -88,10 +162,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     // --- File Upload Logic ---
-    function setupFileUpload(dropZone, fileInput, fileInfo, filenameSpan, removeBtn, type) {
-        // Click on the drop-zone text (not on the browse button which has its own onclick)
+    function setupFileUpload(dropZone, fileInput, browseBtn, fileInfo, filenameSpan, removeBtn, type) {
+        // Fix: Browse button click handler in JS (MV3 CSP compliant)
+        browseBtn.addEventListener("click", (e) => {
+            e.stopPropagation(); // Prevent bubbling to dropZone click
+            fileInput.click();
+        });
+
+        // Click on drop zone also triggers upload (if not clicking browse button)
         dropZone.addEventListener("click", (e) => {
-            if (e.target.tagName !== "BUTTON") fileInput.click();
+            if (e.target !== browseBtn) fileInput.click();
         });
         
         dropZone.addEventListener("dragover", (e) => {
@@ -128,7 +208,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         function handleFile(file) {
             if (!file.type || file.type !== "application/pdf") {
-                showError("Please upload a PDF file.");
+                showError(I18n.t("errorPdf"));
                 return;
             }
             if (type === "mask") maskFile = file;
@@ -141,8 +221,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
-    setupFileUpload(maskDropZone, maskFileInput, maskFileInfo, maskFilename, maskRemoveFile, "mask");
-    setupFileUpload(tailorDropZone, tailorFileInput, tailorFileInfo, tailorFilename, tailorRemoveFile, "tailor");
+    setupFileUpload(maskDropZone, maskFileInput, maskBrowseBtn, maskFileInfo, maskFilename, maskRemoveFile, "mask");
+    setupFileUpload(tailorDropZone, tailorFileInput, tailorBrowseBtn, tailorFileInfo, tailorFilename, tailorRemoveFile, "tailor");
 
     function updateBtnState() {
         maskBtn.disabled = !maskFile;
@@ -165,7 +245,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 filename: `masked_${maskFile.name}`,
                 saveAs: true
             });
-            showSuccess("Masked CV downloaded!");
+            showSuccess(I18n.t("successMask"));
         } catch (e) {
             showError(e.message || "Failed to mask CV");
         } finally {
@@ -178,13 +258,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         try {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (!tab || !tab.url || !tab.url.includes("linkedin.com/jobs")) {
-                showError("Navigate to a LinkedIn Job page first.");
+                showError(I18n.t("errorLinkedin"));
                 return;
             }
 
             setLoading(scrapeJdBtn, true);
 
-            // Inject content script if not already injected, then send message
             await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 files: ["content/linkedin-scraper.js"]
@@ -195,7 +274,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (data && data.description) {
                 jobDescriptionInput.value = data.description;
                 updateBtnState();
-                showSuccess("Job Description scraped!");
+                showSuccess(I18n.t("successScrape"));
             } else {
                 showError("Could not find job description on this page.");
             }
@@ -223,7 +302,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (response && response.tailoredCv) {
                 if (typeof PdfGenerator !== "undefined" && window.jspdf) {
                     PdfGenerator.generate(response.tailoredCv, jd);
-                    showSuccess("Tailored CV generated!");
+                    showSuccess(I18n.t("successTailor"));
                 } else {
                     showError("PDF Generator not loaded. Please reload the extension.");
                 }
@@ -256,23 +335,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     function showError(msg) {
         statusMessage.textContent = msg;
         statusMessage.className = "error";
+        statusMessage.classList.remove("hidden"); // Ensure visible
         setTimeout(() => statusMessage.classList.add("hidden"), 4000);
     }
     
     function showSuccess(msg) {
         statusMessage.textContent = msg;
         statusMessage.className = "success";
+        statusMessage.classList.remove("hidden"); // Ensure visible
         setTimeout(() => statusMessage.classList.add("hidden"), 3000);
     }
 
     function setLoading(btn, isLoading) {
         if (isLoading) {
             btn.dataset.originalText = btn.textContent;
-            btn.textContent = "Processing...";
+            btn.textContent = I18n.t("processing");
             btn.disabled = true;
         } else {
             btn.textContent = btn.dataset.originalText || btn.textContent;
-            // Re-evaluate disabled state for action buttons
             updateBtnState();
         }
     }

@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Civify Extension</title>
+    <title data-i18n="appTitle">Civify Extension</title>
     <link rel="stylesheet" href="popup.css">
     <script src="../lib/jspdf.umd.min.js"></script>
+    <script src="../lib/i18n.js"></script>
     <script src="../lib/api.js"></script>
     <script src="../lib/pdf-generator.js"></script>
 </head>
@@ -19,15 +20,15 @@
                     <source srcset="../icons/icon128-dark.png" media="(prefers-color-scheme: no-preference)">
                     <img src="../icons/icon128.png" alt="Civify Logo">
                 </picture>
-                <h1>Civify</h1>
-                <p>Tailor your resume instantly</p>
+                <h1 data-i18n="appTitle">Civify</h1>
+                <p data-i18n="appSubtitle">Tailor your resume instantly</p>
             </div>
             <div class="input-group">
-                <label for="api-key">API Key</label>
-                <input type="password" id="api-key" placeholder="Enter your Civify API Key">
+                <label for="api-key" data-i18n="apiKeyLabel">API Key</label>
+                <input type="password" id="api-key" data-i18n="apiKeyPlaceholder" placeholder="Enter your Civify API Key">
             </div>
-            <button id="login-btn" class="btn-primary">Login</button>
-            <p class="helper-text">Don't have a key? <a href="https://civify.cv" target="_blank">Get one here</a></p>
+            <button id="login-btn" class="btn-primary" data-i18n="loginBtn">Login</button>
+            <p class="helper-text"><span data-i18n="dontHaveKey">Don't have a key?</span> <a href="https://civify.cv" target="_blank" data-i18n="getKeyLink">Get one here</a></p>
         </div>
 
         <!-- Main View -->
@@ -37,39 +38,70 @@
                     <span id="user-name">User</span>
                     <span id="credits-badge" class="badge">0 Credits</span>
                 </div>
-                <button id="logout-btn" class="icon-btn" title="Logout">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                </button>
+                <div class="header-actions">
+                     <button id="settings-btn" class="icon-btn" title="Settings">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    </button>
+                    <button id="logout-btn" class="icon-btn" title="Logout" data-i18n="logoutTitle">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    </button>
+                </div>
             </header>
+
+            <!-- Settings Overlay -->
+            <div id="settings-overlay" class="overlay hidden">
+                <div class="settings-panel">
+                    <div class="settings-header">
+                        <h2 data-i18n="settingsTitle">Settings</h2>
+                        <button id="close-settings" class="close-btn">×</button>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <label data-i18n="themeLabel">Theme</label>
+                        <div class="toggle-group">
+                            <button class="toggle-btn active" data-value="dark" data-setting="theme" data-i18n="themeDark">Dark</button>
+                            <button class="toggle-btn" data-value="light" data-setting="theme" data-i18n="themeLight">Light</button>
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <label data-i18n="languageLabel">Language</label>
+                        <div class="toggle-group">
+                            <button class="toggle-btn active" data-value="en" data-setting="lang" data-i18n="langEn">English</button>
+                            <button class="toggle-btn" data-value="ar" data-setting="lang" data-i18n="langAr">Arabic</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <!-- Tabs -->
             <div class="tabs">
-                <button class="tab-btn active" data-tab="mask">Mask CV</button>
-                <button class="tab-btn" data-tab="tailor">Tailor CV</button>
+                <button class="tab-btn active" data-tab="mask" data-i18n="tabMask">Mask CV</button>
+                <button class="tab-btn" data-tab="tailor" data-i18n="tabTailor">Tailor CV</button>
             </div>
 
             <!-- Mask Tab -->
             <div id="mask-tab" class="tab-content active">
                 <div class="upload-area" id="mask-drop-zone">
                     <div class="icon">📄</div>
-                    <p>Drag & Drop Resume (PDF)</p>
+                    <p data-i18n="dragDropMask">Drag & Drop Resume (PDF)</p>
                     <input type="file" id="mask-file-input" accept=".pdf" hidden>
-                    <button class="btn-secondary" onclick="document.getElementById('mask-file-input').click()">Browse</button>
+                    <button class="btn-secondary" id="mask-browse-btn" data-i18n="browse">Browse</button>
                 </div>
                 <div id="mask-file-info" class="file-info hidden">
                     <span id="mask-filename">resume.pdf</span>
                     <button id="mask-remove-file" class="close-btn">×</button>
                 </div>
-                <button id="mask-btn" class="btn-primary" disabled>Mask PII & Download</button>
+                <button id="mask-btn" class="btn-primary" disabled data-i18n="maskBtn">Mask PII & Download</button>
             </div>
 
             <!-- Tailor Tab -->
             <div id="tailor-tab" class="tab-content">
                 <div class="upload-area" id="tailor-drop-zone">
                     <div class="icon">📄</div>
-                    <p>Upload Resume (PDF)</p>
+                    <p data-i18n="dragDropTailor">Upload Resume (PDF)</p>
                     <input type="file" id="tailor-file-input" accept=".pdf" hidden>
-                    <button class="btn-secondary" onclick="document.getElementById('tailor-file-input').click()">Browse</button>
+                    <button class="btn-secondary" id="tailor-browse-btn" data-i18n="browse">Browse</button>
                 </div>
                 <div id="tailor-file-info" class="file-info hidden">
                     <span id="tailor-filename">resume.pdf</span>
@@ -77,20 +109,20 @@
                 </div>
                 
                 <div class="job-input-area">
-                    <label>Job Description</label>
+                    <label data-i18n="jdLabel">Job Description</label>
                     <div class="jd-actions">
-                        <button id="scrape-jd-btn" class="btn-small">
+                        <button id="scrape-jd-btn" class="btn-small" data-i18n="scrapeBtn">
                             Generate from LinkedIn
                         </button>
                     </div>
-                    <textarea id="job-description" placeholder="Paste job description or use 'Generate from LinkedIn'"></textarea>
+                    <textarea id="job-description" data-i18n="jdPlaceholder" placeholder="Paste job description or use 'Generate from LinkedIn'"></textarea>
                 </div>
 
                 <div class="options">
-                     <label><input type="checkbox" id="generate-cover-letter"> Cover Letter</label>
+                     <label><input type="checkbox" id="generate-cover-letter"> <span data-i18n="coverLetterLabel">Cover Letter</span></label>
                 </div>
 
-                <button id="tailor-btn" class="btn-primary" disabled>Tailor & Download</button>
+                <button id="tailor-btn" class="btn-primary" disabled data-i18n="tailorBtn">Tailor & Download</button>
             </div>
         </div>
 
