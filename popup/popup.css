@@ -49,16 +49,6 @@ body {
     text-align: right;
 }
 
-[dir="rtl"] .header-actions {
-    margin-right: auto;
-    margin-left: 0;
-}
-
-[dir="rtl"] .user-info {
-    margin-left: 8px;
-    margin-right: 0;
-}
-
 #app {
     display: flex;
     flex-direction: column;
@@ -185,37 +175,79 @@ input:focus {
     text-decoration: underline;
 }
 
-/* Main View */
+/* Main View Header */
 header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
 }
 
-.user-info {
+.brand {
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-.header-actions {
+.brand img {
+    width: 24px;
+    height: 24px;
+}
+
+.brand-name {
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #818cf8, #c4b5fd);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+[data-theme="light"] .brand-name {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.header-controls {
     display: flex;
-    gap: 8px;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    line-height: 1.2;
+}
+
+[dir="rtl"] .user-info {
+    align-items: flex-start;
 }
 
 #user-name {
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
+    color: var(--text-color);
 }
 
 .badge {
     background-color: rgba(99, 102, 241, 0.15);
     color: #818cf8;
-    padding: 3px 10px;
-    border-radius: 12px;
-    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.65rem;
     font-weight: 500;
+}
+
+.header-actions {
+    display: flex;
+    gap: 4px;
 }
 
 .icon-btn {
@@ -226,6 +258,9 @@ header {
     padding: 6px;
     border-radius: 6px;
     transition: color 0.2s, background-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .icon-btn:hover {
