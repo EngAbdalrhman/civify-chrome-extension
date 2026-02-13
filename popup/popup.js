@@ -111,6 +111,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     function applyTheme(theme) {
         document.body.setAttribute("data-theme", theme);
+        
+        const suffix = theme === "dark" ? "-dark" : "";
+        
+        const authLogo = document.getElementById("auth-logo");
+        if (authLogo) authLogo.src = `../icons/icon128${suffix}.png`;
+        
+        const headerLogo = document.getElementById("header-logo");
+        if (headerLogo) headerLogo.src = `../icons/icon48${suffix}.png`;
     }
     
     function updateToggleStates(theme, lang) {
