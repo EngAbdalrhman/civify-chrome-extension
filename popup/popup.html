@@ -14,7 +14,11 @@
         <!-- Auth View -->
         <div id="auth-view" class="view hidden">
             <div class="logo-container">
-                <img src="../icons/icon128.png" alt="Civify Logo">
+                <picture>
+                    <source srcset="../icons/icon128-dark.png" media="(prefers-color-scheme: dark)">
+                    <source srcset="../icons/icon128-dark.png" media="(prefers-color-scheme: no-preference)">
+                    <img src="../icons/icon128.png" alt="Civify Logo">
+                </picture>
                 <h1>Civify</h1>
                 <p>Tailor your resume instantly</p>
             </div>
