@@ -119,6 +119,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         
         const headerLogo = document.getElementById("header-logo");
         if (headerLogo) headerLogo.src = `../icons/icon48${suffix}.png`;
+
+        // Notify background script to update extension icon
+        chrome.runtime.sendMessage({ action: "updateTheme", theme: theme }).catch(() => {
+            // Ignore errors (e.g. if background script is inactive)
+        });
     }
     
     function updateToggleStates(theme, lang) {
