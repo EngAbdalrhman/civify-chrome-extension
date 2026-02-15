@@ -122,11 +122,53 @@
                     <textarea id="job-description" data-i18n="jdPlaceholder" placeholder="Paste job description or use 'Generate from LinkedIn'"></textarea>
                 </div>
 
+                <div class="options-group">
+                    <label class="group-label" data-i18n="templateLabel">Template</label>
+                    <div class="template-selector">
+                        <button class="template-btn active" data-template="modern">
+                            <span class="color-dot" style="background-color: #000000;"></span>
+                            <span data-i18n="templateModern">Modern</span>
+                        </button>
+                        <button class="template-btn" data-template="classic">
+                            <span class="color-dot" style="background-color: #374151;"></span>
+                            <span data-i18n="templateClassic">Classic</span>
+                        </button>
+                        <button class="template-btn" data-template="creative">
+                            <span class="color-dot" style="background-color: #6366f1;"></span>
+                            <span data-i18n="templateCreative">Creative</span>
+                        </button>
+                    </div>
+                </div>
+
                 <div class="options">
                      <label><input type="checkbox" id="generate-cover-letter"> <span data-i18n="coverLetterLabel">Cover Letter</span></label>
                 </div>
 
                 <button id="tailor-btn" class="btn-primary" disabled data-i18n="tailorBtn">Tailor & Download</button>
+            </div>
+        </div>
+
+        <!-- Results Overlay (Cover Letter) -->
+        <div id="results-overlay" class="overlay hidden">
+            <div class="results-panel">
+                <div class="results-header">
+                    <h2 data-i18n="coverLetterTitle">Cover Letter</h2>
+                    <button id="close-results" class="close-btn">×</button>
+                </div>
+                
+                <div class="ats-badge hidden" id="ats-score-badge">
+                    <span data-i18n="atsScoreLabel">ATS Score</span>
+                    <span class="score-value" id="ats-score-value">--</span>
+                </div>
+
+                <textarea id="cover-letter-text" readonly></textarea>
+                
+                <div class="results-actions">
+                    <button id="copy-btn" class="btn-secondary">
+                        <span class="icon">📋</span> <span data-i18n="copyBtn">Copy</span>
+                    </button>
+                    <!-- PDF download is automatic, but we could add a re-download button here if needed -->
+                </div>
             </div>
         </div>
 

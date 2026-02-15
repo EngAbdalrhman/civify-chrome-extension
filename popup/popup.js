@@ -299,6 +299,45 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     });
 
+    // --- Template Selector Logic ---
+    const templateBtns = document.querySelectorAll(".template-btn");
+    let selectedTemplate = "modern";
+
+    templateBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+            templateBtns.forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            selectedTemplate = btn.dataset.template;
+        });
+    });
+
+    // --- Results Logic ---
+    const resultsOverlay = document.getElementById("results-overlay");
+    const closeResultsBtn = document.getElementById("close-results");
+    const coverLetterText = document.getElementById("cover-letter-text");
+    const copyBtn = document.getElementById("copy-btn");
+    const atsScoreBadge = document.getElementById("ats-score-badge");
+    const atsScoreValue = document.getElementById("ats-score-value");
+
+    if (closeResultsBtn) {
+        closeResultsBtn.addEventListener("click", () => {
+            resultsOverlay.classList.add("hidden");
+        });
+    }
+
+    if (copyBtn) {
+        copyBtn.addEventListener("click", () => {
+            coverLetterText.select();
+            document.execCommand("copy");
+            const originalText = copyBtn.innerHTML;
+            copyBtn.innerHTML = `<span class="icon">✓</span> ${I18n.t("copied") || "Copied!"}`;
+            setTimeout(() => {
+                copyBtn.innerHTML = originalText;
+            }, 2000);
+        });
+    }
+
+    // --- Tailor & Generate Logic ---
     tailorBtn.addEventListener("click", async () => {
         if (!tailorFile || !jobDescriptionInput.value.trim()) return;
         setLoading(tailorBtn, true);
@@ -310,18 +349,59 @@ document.addEventListener("DOMContentLoaded", async () => {
                 generateCoverLetter: generateCoverLetterCheckbox.checked
             };
             
-            const response = await Api.tailorCv(tailorFile, jd, apiKey, options);
+            // 1. Call Tailor API
+            const tailorResponse = await Api.tailorCv(tailorFile, jd, apiKey, options);
             
-            if (response && response.tailoredCv) {
-                if (typeof PdfGenerator !== "undefined" && window.jspdf) {
-                    PdfGenerator.generate(response.tailoredCv, jd);
-                    showSuccess(I18n.t("successTailor"));
-                } else {
-                    showError("PDF Generator not loaded. Please reload the extension.");
-                }
-            } else {
-                showError("No tailored data returned from the server.");
+            if (!tailorResponse || !tailorResponse.tailoredCv) {
+                throw new Error("No tailored data returned from the server.");
             }
+
+            const { tailoredCv, coverLetter, atsScore } = tailorResponse;
+
+            // 2. Generate PDF (Try Server-side first, Fallback to Client-side)
+            try {
+                const blob = await Api.generatePdf(tailoredCv, selectedTemplate);
+                const url = URL.createObjectURL(blob);
+                await chrome.downloads.download({
+                    url: url,
+                    filename: `tailored_cv_${selectedTemplate}.pdf`,
+                    saveAs: true
+                });
+                showSuccess(I18n.t("successTailor") || "CV Tailored & Downloaded!");
+            } catch (pdfErr) {
+                console.warn("Server-side PDF generation failed, falling back to local:", pdfErr);
+                // Fallback to local jsPDF
+                if (typeof PdfGenerator !== "undefined" && window.jspdf) {
+                    PdfGenerator.generate(tailoredCv, selectedTemplate); // Updated to accept template
+                    showSuccess((I18n.t("successTailor") || "CV Tailored!") + " (Local Fallback)");
+                } else {
+                    throw new Error("PDF generation failed and fallback is unavailable.");
+                }
+            }
+
+            // 3. Show Cover Letter / Results if available
+            if (coverLetter || atsScore) {
+                if (coverLetter) {
+                    coverLetterText.value = coverLetter;
+                    coverLetterText.parentElement.classList.remove("hidden"); // Ensure text area is visible
+                } else {
+                    coverLetterText.parentElement.classList.add("hidden");
+                }
+
+                if (atsScore) {
+                    atsScoreBadge.classList.remove("hidden");
+                    atsScoreValue.textContent = `${atsScore.overall}%`;
+                    // Color coding
+                    if (atsScore.overall >= 80) atsScoreValue.style.color = "#10b981"; // green
+                    else if (atsScore.overall >= 60) atsScoreValue.style.color = "#f59e0b"; // orange
+                    else atsScoreValue.style.color = "#ef4444"; // red
+                } else {
+                    atsScoreBadge.classList.add("hidden");
+                }
+
+                resultsOverlay.classList.remove("hidden");
+            }
+
         } catch (e) {
             console.error("Tailor error:", e);
             showError(e.message || "Failed to tailor CV");
@@ -347,25 +427,25 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     function showError(msg) {
         statusMessage.textContent = msg;
-        statusMessage.className = "error";
-        statusMessage.classList.remove("hidden"); // Ensure visible
+        statusMessage.className = "status-message error";
+        statusMessage.classList.remove("hidden");
         setTimeout(() => statusMessage.classList.add("hidden"), 4000);
     }
     
     function showSuccess(msg) {
         statusMessage.textContent = msg;
-        statusMessage.className = "success";
-        statusMessage.classList.remove("hidden"); // Ensure visible
+        statusMessage.className = "status-message success";
+        statusMessage.classList.remove("hidden");
         setTimeout(() => statusMessage.classList.add("hidden"), 3000);
     }
 
     function setLoading(btn, isLoading) {
         if (isLoading) {
             btn.dataset.originalText = btn.textContent;
-            btn.textContent = I18n.t("processing");
+            btn.textContent = I18n.t("processing") || "Processing...";
             btn.disabled = true;
         } else {
-            btn.textContent = btn.dataset.originalText || btn.textContent;
+            btn.textContent = btn.dataset.originalText || "Tailor & Download";
             updateBtnState();
         }
     }

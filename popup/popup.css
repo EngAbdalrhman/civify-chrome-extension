@@ -611,6 +611,148 @@ textarea:focus {
     border-radius: 3px;
 }
 
+/* ... existing scrollbar styles ... */
 ::-webkit-scrollbar-thumb:hover {
     background: var(--text-muted);
+}
+
+/* Template Selector */
+.options-group {
+    margin: 16px 0;
+}
+
+.group-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.template-selector {
+    display: flex;
+    gap: 8px;
+    background-color: var(--card-bg); /* Match input bg */
+    border: 1px solid var(--border-color);
+    padding: 4px;
+    border-radius: 8px;
+}
+
+.template-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: none;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    padding: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+}
+
+.template-btn:hover {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+.template-btn.active {
+    background-color: var(--bg-color);
+    border-color: var(--primary-color);
+    color: var(--text-color);
+    font-weight: 500;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.color-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Results Overlay */
+.results-panel {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    width: 90%;
+    max-width: 340px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    max-height: 85vh;
+}
+
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.results-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    background: linear-gradient(135deg, #818cf8, #c4b5fd);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.ats-badge {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+.ats-badge span:first-child {
+    font-size: 0.8rem;
+    color: var(--success-color);
+    font-weight: 500;
+}
+
+.score-value {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--success-color);
+}
+
+#cover-letter-text {
+    flex: 1;
+    min-height: 150px;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+    color: var(--text-color);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin-bottom: 16px;
+    resize: none;
+    font-family: inherit;
+}
+
+.results-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.results-actions button {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
 }
