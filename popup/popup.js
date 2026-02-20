@@ -358,26 +358,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             const { tailoredCv, coverLetter, atsScore } = tailorResponse;
 
-            // 2. Generate PDF (Try Server-side first, Fallback to Client-side)
-            try {
-                const blob = await Api.generatePdf(tailoredCv, selectedTemplate);
-                const url = URL.createObjectURL(blob);
-                await chrome.downloads.download({
-                    url: url,
-                    filename: `tailored_cv_${selectedTemplate}.pdf`,
-                    saveAs: true
-                });
-                showSuccess(I18n.t("successTailor") || "CV Tailored & Downloaded!");
-            } catch (pdfErr) {
-                console.warn("Server-side PDF generation failed, falling back to local:", pdfErr);
-                // Fallback to local jsPDF
-                if (typeof PdfGenerator !== "undefined" && window.jspdf) {
-                    PdfGenerator.generate(tailoredCv, selectedTemplate); // Updated to accept template
-                    showSuccess((I18n.t("successTailor") || "CV Tailored!") + " (Local Fallback)");
-                } else {
-                    throw new Error("PDF generation failed and fallback is unavailable.");
-                }
-            }
+            // 2. Generate PDF (Server-side only)
+            const blob = await Api.generatePdf(tailoredCv, selectedTemplate);
+            const url = URL.createObjectURL(blob);
+            await chrome.downloads.download({
+                url: url,
+                filename: `tailored_cv_${selectedTemplate}.pdf`,
+                saveAs: true
+            });
+            showSuccess(I18n.t("successTailor") || "CV Tailored & Downloaded!");
 
             // 3. Show Cover Letter / Results if available
             if (coverLetter || atsScore) {
