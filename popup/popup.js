@@ -7,16 +7,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     const userNameSpan = document.getElementById("user-name");
     const creditsBadge = document.getElementById("credits-badge");
     const logoutBtn = document.getElementById("logout-btn");
-    
+
     // Settings
     const settingsBtn = document.getElementById("settings-btn");
     const settingsOverlay = document.getElementById("settings-overlay");
     const closeSettingsBtn = document.getElementById("close-settings");
     const toggleBtns = document.querySelectorAll(".toggle-btn");
-    
+
     // Tabs
     const tabBtns = document.querySelectorAll(".tab-btn");
-    
+
     // Mask Tab
     const maskDropZone = document.getElementById("mask-drop-zone");
     const maskFileInput = document.getElementById("mask-file-input");
@@ -25,7 +25,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const maskFilename = document.getElementById("mask-filename");
     const maskRemoveFile = document.getElementById("mask-remove-file");
     const maskBtn = document.getElementById("mask-btn");
-    
+
     // Tailor Tab
     const tailorDropZone = document.getElementById("tailor-drop-zone");
     const tailorFileInput = document.getElementById("tailor-file-input");
@@ -43,10 +43,29 @@ document.addEventListener("DOMContentLoaded", async () => {
     let maskFile = null;
     let tailorFile = null;
 
+    // --- Profile Refresh Helper ---
+    async function refreshProfile() {
+        try {
+            const { apiKey } = await chrome.storage.local.get("apiKey");
+            if (!apiKey) return;
+            const profile = await Api.validateKey(apiKey);
+            await chrome.storage.local.set({ userProfile: profile });
+            userNameSpan.textContent = profile.firstName || profile.username || "User";
+            creditsBadge.textContent = `${profile.creditsRemaining ?? 0} Credits`;
+        } catch (e) {
+            console.warn("Profile refresh failed:", e.message);
+            // If 401/403, the key is invalid – force re-login
+            if (e.message && (e.message.includes("401") || e.message.includes("Invalid"))) {
+                await chrome.storage.local.remove(["apiKey", "userProfile"]);
+                showAuthView();
+            }
+        }
+    }
+
     // --- Initialization ---
     try {
         const result = await chrome.storage.local.get(["apiKey", "userProfile", "theme", "lang"]);
-        
+
         // Apply persisted settings
         applyTheme(result.theme || "dark");
         I18n.init(result.lang || "en");
@@ -54,6 +73,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         if (result.apiKey) {
             showMainView(result.userProfile);
+            // Refresh profile from server to get latest credits/data
+            refreshProfile();
         } else {
             showAuthView();
         }
@@ -104,19 +125,19 @@ document.addEventListener("DOMContentLoaded", async () => {
                 I18n.applyLanguage(value);
                 await chrome.storage.local.set({ lang: value });
                 // Re-update button state in case text changed/reflowed
-                updateBtnState(); 
+                updateBtnState();
             }
         });
     });
 
     function applyTheme(theme) {
         document.body.setAttribute("data-theme", theme);
-        
+
         const suffix = theme === "dark" ? "-dark" : "";
-        
+
         const authLogo = document.getElementById("auth-logo");
         if (authLogo) authLogo.src = `../icons/icon128${suffix}.png`;
-        
+
         const headerLogo = document.getElementById("header-logo");
         if (headerLogo) headerLogo.src = `../icons/icon48${suffix}.png`;
 
@@ -125,7 +146,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             // Ignore errors (e.g. if background script is inactive)
         });
     }
-    
+
     function updateToggleStates(theme, lang) {
         document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
         const themeBtn = document.querySelector(`.toggle-btn[data-setting="theme"][data-value="${theme}"]`);
@@ -138,7 +159,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     loginBtn.addEventListener("click", async () => {
         const key = apiKeyInput.value.trim();
         if (!key) return showError(I18n.t("errorApiKey"));
-        
+
         setLoading(loginBtn, true);
         try {
             const profile = await Api.validateKey(key);
@@ -186,33 +207,33 @@ document.addEventListener("DOMContentLoaded", async () => {
         dropZone.addEventListener("click", (e) => {
             if (e.target !== browseBtn) fileInput.click();
         });
-        
+
         dropZone.addEventListener("dragover", (e) => {
             e.preventDefault();
             dropZone.classList.add("dragover");
         });
-        
+
         dropZone.addEventListener("dragleave", () => {
             dropZone.classList.remove("dragover");
         });
-        
+
         dropZone.addEventListener("drop", (e) => {
             e.preventDefault();
             dropZone.classList.remove("dragover");
             const file = e.dataTransfer.files[0];
             if (file) handleFile(file);
         });
-        
+
         fileInput.addEventListener("change", (e) => {
             const file = e.target.files[0];
             if (file) handleFile(file);
         });
-        
+
         removeBtn.addEventListener("click", (e) => {
             e.stopPropagation();
             if (type === "mask") maskFile = null;
             else tailorFile = null;
-            
+
             fileInput.value = "";
             fileInfo.classList.add("hidden");
             dropZone.classList.remove("hidden");
@@ -226,7 +247,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
             if (type === "mask") maskFile = file;
             else tailorFile = file;
-            
+
             filenameSpan.textContent = file.name;
             dropZone.classList.add("hidden");
             fileInfo.classList.remove("hidden");
@@ -241,7 +262,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         maskBtn.disabled = !maskFile;
         tailorBtn.disabled = !tailorFile || !jobDescriptionInput.value.trim();
     }
-    
+
     jobDescriptionInput.addEventListener("input", updateBtnState);
 
     // --- Masking Logic ---
@@ -251,7 +272,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         try {
             const { apiKey } = await chrome.storage.local.get("apiKey");
             const blob = await Api.maskCv(maskFile, apiKey);
-            
+
             const url = URL.createObjectURL(blob);
             await chrome.downloads.download({
                 url: url,
@@ -259,6 +280,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 saveAs: true
             });
             showSuccess(I18n.t("successMask"));
+            refreshProfile();
         } catch (e) {
             showError(e.message || "Failed to mask CV");
         } finally {
@@ -283,7 +305,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             });
 
             const data = await chrome.tabs.sendMessage(tab.id, { action: "scrape" });
-            
+
             if (data && data.description) {
                 jobDescriptionInput.value = data.description;
                 updateBtnState();
@@ -341,17 +363,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     tailorBtn.addEventListener("click", async () => {
         if (!tailorFile || !jobDescriptionInput.value.trim()) return;
         setLoading(tailorBtn, true);
-        
+
         try {
             const { apiKey } = await chrome.storage.local.get("apiKey");
             const jd = jobDescriptionInput.value;
             const options = {
                 generateCoverLetter: generateCoverLetterCheckbox.checked
             };
-            
+
             // 1. Call Tailor API
             const tailorResponse = await Api.tailorCv(tailorFile, jd, apiKey, options);
-            
+
             if (!tailorResponse || !tailorResponse.tailoredCv) {
                 throw new Error("No tailored data returned from the server.");
             }
@@ -367,6 +389,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 saveAs: true
             });
             showSuccess(I18n.t("successTailor") || "CV Tailored & Downloaded!");
+            refreshProfile();
 
             // 3. Show Cover Letter / Results if available
             if (coverLetter || atsScore) {
@@ -420,7 +443,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         statusMessage.classList.remove("hidden");
         setTimeout(() => statusMessage.classList.add("hidden"), 4000);
     }
-    
+
     function showSuccess(msg) {
         statusMessage.textContent = msg;
         statusMessage.className = "status-message success";
