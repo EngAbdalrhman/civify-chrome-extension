@@ -137,7 +137,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // --- Initialization ---
     try {
-        const result = await chrome.storage.local.get(["apiKey", "userProfile", "theme", "lang"]);
+        const result = await chrome.storage.local.get(["apiKey", "userProfile", "theme", "lang", "oauthPendingToken", "oauthError", "oauthTimestamp"]);
 
         // Apply persisted settings
         applyTheme(result.theme || "dark");
@@ -147,6 +147,23 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (result.apiKey) {
             showMainView(result.userProfile);
             refreshProfile();
+        } else if (result.oauthPendingToken) {
+            // OAuth completed while popup was closed — complete login now
+            showAuthView();
+            showInfo(I18n.t("oauthWaiting"));
+            try {
+                await chrome.storage.local.remove(["oauthPendingToken", "oauthError", "oauthTimestamp"]);
+                const keyResponse = await Api.autoGenerateApiKey(result.oauthPendingToken);
+                await completeLoginWithApiKey(keyResponse.key);
+                showSuccess(I18n.t("loginBtn") + " ✓");
+            } catch (e) {
+                showError(e.message || I18n.t("errorLogin"));
+            }
+        } else if (result.oauthError) {
+            // OAuth failed while popup was closed
+            await chrome.storage.local.remove(["oauthError", "oauthTimestamp"]);
+            showAuthView();
+            showError(result.oauthError);
         } else {
             showAuthView();
         }
