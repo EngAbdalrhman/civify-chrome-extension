@@ -5,15 +5,10 @@ chrome.runtime.onInstalled.addListener(() => {
     updateIconForTheme();
 });
 
-// Listen for system theme changes and update toolbar icon
-// Note: matchMedia is not supported in Service Workers.
-// We default to standard icons or could read from storage if set by popup.
+// ─── Icon Theme Management ───────────────────────────────
+
 function updateIconForTheme() {
-    // Default to light/standard icons as we can't detect OS theme easily in SW
-    // To support theme syncing, we'd need to listen to a message from a content script or popup.
     const suffix = ""; 
-    
-    // Use absolute paths to avoid resolution issues
     chrome.action.setIcon({
         path: {
             "16": `/icons/icon16${suffix}.png`,
@@ -23,7 +18,60 @@ function updateIconForTheme() {
     }).catch(err => console.warn("Failed to set icon:", err));
 }
 
-// Listen for messages from popup/content scripts to update icon if needed
+// ─── OAuth2 Callback Interception ────────────────────────
+
+// Listen for OAuth callback navigation.
+// When backend redirects to frontendUrl/auth/callback?accessToken=...,
+// we intercept it, extract the token, and pass it to the extension.
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.url) {
+        const url = changeInfo.url;
+        // Match the OAuth callback URL patterns
+        if (url.includes("/auth/callback") && url.includes("accessToken=")) {
+            try {
+                const urlObj = new URL(url);
+                const accessToken = urlObj.searchParams.get("accessToken");
+
+                if (accessToken) {
+                    console.log("OAuth callback detected, capturing token.");
+
+                    // Store the access token temporarily for the popup to consume
+                    chrome.storage.local.set({
+                        oauthPendingToken: accessToken,
+                        oauthTimestamp: Date.now()
+                    });
+
+                    // Close the OAuth tab after a short delay
+                    setTimeout(() => {
+                        chrome.tabs.remove(tabId).catch(() => {});
+                    }, 500);
+                }
+            } catch (e) {
+                console.error("Failed to parse OAuth callback URL:", e);
+            }
+        }
+
+        // Handle OAuth error callback
+        if (url.includes("/auth/callback") && url.includes("error=")) {
+            try {
+                const urlObj = new URL(url);
+                const error = urlObj.searchParams.get("error");
+                chrome.storage.local.set({
+                    oauthError: error || "OAuth login failed",
+                    oauthTimestamp: Date.now()
+                });
+                setTimeout(() => {
+                    chrome.tabs.remove(tabId).catch(() => {});
+                }, 500);
+            } catch (e) {
+                console.error("Failed to parse OAuth error URL:", e);
+            }
+        }
+    }
+});
+
+// ─── Message Listener ────────────────────────────────────
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "updateTheme") {
         const suffix = message.theme === "dark" ? "-dark" : "";

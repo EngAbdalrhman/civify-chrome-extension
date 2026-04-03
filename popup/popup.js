@@ -2,11 +2,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     // --- Elements ---
     const authView = document.getElementById("auth-view");
     const mainView = document.getElementById("main-view");
-    const apiKeyInput = document.getElementById("api-key");
-    const loginBtn = document.getElementById("login-btn");
     const userNameSpan = document.getElementById("user-name");
     const creditsBadge = document.getElementById("credits-badge");
     const logoutBtn = document.getElementById("logout-btn");
+
+    // Email/Password Login
+    const loginEmailInput = document.getElementById("login-email");
+    const loginPasswordInput = document.getElementById("login-password");
+    const emailLoginBtn = document.getElementById("email-login-btn");
+
+    // Social Login
+    const googleLoginBtn = document.getElementById("google-login-btn");
+    const linkedinLoginBtn = document.getElementById("linkedin-login-btn");
+
+    // API Key Login (Advanced)
+    const toggleApiKeyBtn = document.getElementById("toggle-api-key");
+    const apiKeySection = document.getElementById("api-key-section");
+    const apiKeyInput = document.getElementById("api-key");
+    const apiKeyLoginBtn = document.getElementById("api-key-login-btn");
 
     // Settings
     const settingsBtn = document.getElementById("settings-btn");
@@ -54,11 +67,71 @@ document.addEventListener("DOMContentLoaded", async () => {
             creditsBadge.textContent = `${profile.creditsRemaining ?? 0} Credits`;
         } catch (e) {
             console.warn("Profile refresh failed:", e.message);
-            // If 401/403, the key is invalid – force re-login
             if (e.message && (e.message.includes("401") || e.message.includes("Invalid"))) {
                 await chrome.storage.local.remove(["apiKey", "userProfile"]);
                 showAuthView();
             }
+        }
+    }
+
+    // --- Complete Login (shared by all auth methods) ---
+    // Takes an API key, validates it, stores it, and shows main view
+    async function completeLoginWithApiKey(apiKey) {
+        const profile = await Api.validateKey(apiKey);
+        await chrome.storage.local.set({ apiKey, userProfile: profile });
+        showMainView(profile);
+    }
+
+    // --- OAuth Polling ---
+    // After opening OAuth tab, poll for the pending token
+    let oauthPollInterval = null;
+
+    function startOAuthPolling() {
+        showInfo(I18n.t("oauthWaiting"));
+
+        // Clear any stale oauth data
+        chrome.storage.local.remove(["oauthPendingToken", "oauthError", "oauthTimestamp"]);
+
+        oauthPollInterval = setInterval(async () => {
+            const data = await chrome.storage.local.get(["oauthPendingToken", "oauthError", "oauthTimestamp"]);
+
+            // Check for timeout (60 seconds)
+            if (data.oauthTimestamp && (Date.now() - data.oauthTimestamp > 60000)) {
+                stopOAuthPolling();
+                showError(I18n.t("errorLogin"));
+                return;
+            }
+
+            // Check for error
+            if (data.oauthError) {
+                stopOAuthPolling();
+                await chrome.storage.local.remove(["oauthError", "oauthTimestamp"]);
+                showError(data.oauthError);
+                return;
+            }
+
+            // Check for success
+            if (data.oauthPendingToken) {
+                stopOAuthPolling();
+                try {
+                    const accessToken = data.oauthPendingToken;
+                    await chrome.storage.local.remove(["oauthPendingToken", "oauthTimestamp"]);
+
+                    // Auto-generate API key using the access token
+                    const keyResponse = await Api.autoGenerateApiKey(accessToken);
+                    await completeLoginWithApiKey(keyResponse.key);
+                    showSuccess(I18n.t("loginBtn") + " ✓");
+                } catch (e) {
+                    showError(e.message || I18n.t("errorLogin"));
+                }
+            }
+        }, 500);
+    }
+
+    function stopOAuthPolling() {
+        if (oauthPollInterval) {
+            clearInterval(oauthPollInterval);
+            oauthPollInterval = null;
         }
     }
 
@@ -73,7 +146,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         if (result.apiKey) {
             showMainView(result.userProfile);
-            // Refresh profile from server to get latest credits/data
             refreshProfile();
         } else {
             showAuthView();
@@ -81,7 +153,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (e) {
         console.error("Initialization error:", e);
         showAuthView();
-        // Fallback defaults
         applyTheme("dark");
         I18n.init("en");
     }
@@ -99,7 +170,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    // Close settings when clicking outside panel
     if (settingsOverlay) {
         settingsOverlay.addEventListener("click", (e) => {
             if (e.target === settingsOverlay) {
@@ -113,18 +183,15 @@ document.addEventListener("DOMContentLoaded", async () => {
             const setting = btn.dataset.setting;
             const value = btn.dataset.value;
 
-            // Update UI state
             document.querySelectorAll(`.toggle-btn[data-setting="${setting}"]`).forEach(b => b.classList.remove("active"));
             btn.classList.add("active");
 
-            // Apply setting
             if (setting === "theme") {
                 applyTheme(value);
                 await chrome.storage.local.set({ theme: value });
             } else if (setting === "lang") {
                 I18n.applyLanguage(value);
                 await chrome.storage.local.set({ lang: value });
-                // Re-update button state in case text changed/reflowed
                 updateBtnState();
             }
         });
@@ -141,10 +208,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const headerLogo = document.getElementById("header-logo");
         if (headerLogo) headerLogo.src = `../icons/icon48${suffix}.png`;
 
-        // Notify background script to update extension icon
-        chrome.runtime.sendMessage({ action: "updateTheme", theme: theme }).catch(() => {
-            // Ignore errors (e.g. if background script is inactive)
-        });
+        chrome.runtime.sendMessage({ action: "updateTheme", theme: theme }).catch(() => {});
     }
 
     function updateToggleStates(theme, lang) {
@@ -155,30 +219,104 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (langBtn) langBtn.classList.add('active');
     }
 
-    // --- Auth Logic ---
-    loginBtn.addEventListener("click", async () => {
+    // ─── Auth Logic ──────────────────────────────────────────
+
+    // 1. Email/Password Login
+    emailLoginBtn.addEventListener("click", async () => {
+        const email = loginEmailInput.value.trim();
+        const password = loginPasswordInput.value.trim();
+
+        if (!email) return showError(I18n.t("errorEmail"));
+        if (!password) return showError(I18n.t("errorPassword"));
+
+        setLoading(emailLoginBtn, true);
+        try {
+            // Step 1: Login with credentials
+            const authResponse = await Api.login(email, password);
+
+            if (authResponse.requires2FA) {
+                showError("2FA is not yet supported in the extension. Please use API key login.");
+                return;
+            }
+
+            if (!authResponse.accessToken) {
+                showError(authResponse.message || I18n.t("errorLogin"));
+                return;
+            }
+
+            // Step 2: Auto-generate API key using access token
+            const keyResponse = await Api.autoGenerateApiKey(authResponse.accessToken);
+
+            // Step 3: Validate the key and store it
+            await completeLoginWithApiKey(keyResponse.key);
+
+            loginEmailInput.value = "";
+            loginPasswordInput.value = "";
+        } catch (e) {
+            showError(e.message || I18n.t("errorLogin"));
+        } finally {
+            setLoading(emailLoginBtn, false);
+        }
+    });
+
+    // Allow Enter key to submit
+    loginPasswordInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") emailLoginBtn.click();
+    });
+    loginEmailInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") loginPasswordInput.focus();
+    });
+
+    // 2. Google OAuth Login
+    googleLoginBtn.addEventListener("click", async () => {
+        try {
+            const oauthUrl = await Api.getOAuthUrl("google");
+            chrome.tabs.create({ url: oauthUrl });
+            startOAuthPolling();
+        } catch (e) {
+            showError(e.message || I18n.t("errorLogin"));
+        }
+    });
+
+    // 3. LinkedIn OAuth Login
+    linkedinLoginBtn.addEventListener("click", async () => {
+        try {
+            const oauthUrl = await Api.getOAuthUrl("linkedin");
+            chrome.tabs.create({ url: oauthUrl });
+            startOAuthPolling();
+        } catch (e) {
+            showError(e.message || I18n.t("errorLogin"));
+        }
+    });
+
+    // 4. API Key Login (Advanced - toggle visibility)
+    toggleApiKeyBtn.addEventListener("click", () => {
+        apiKeySection.classList.toggle("hidden");
+        toggleApiKeyBtn.classList.toggle("expanded");
+    });
+
+    apiKeyLoginBtn.addEventListener("click", async () => {
         const key = apiKeyInput.value.trim();
         if (!key) return showError(I18n.t("errorApiKey"));
 
-        setLoading(loginBtn, true);
+        setLoading(apiKeyLoginBtn, true);
         try {
-            const profile = await Api.validateKey(key);
-            await chrome.storage.local.set({ apiKey: key, userProfile: profile });
-            showMainView(profile);
+            await completeLoginWithApiKey(key);
             apiKeyInput.value = "";
         } catch (e) {
             showError(e.message || I18n.t("errorInvalidKey"));
         } finally {
-            setLoading(loginBtn, false);
+            setLoading(apiKeyLoginBtn, false);
         }
     });
 
-    // Allow pressing Enter to login
     apiKeyInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") loginBtn.click();
+        if (e.key === "Enter") apiKeyLoginBtn.click();
     });
 
+    // Logout
     logoutBtn.addEventListener("click", async () => {
+        stopOAuthPolling();
         await chrome.storage.local.remove(["apiKey", "userProfile"]);
         maskFile = null;
         tailorFile = null;
@@ -197,13 +335,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // --- File Upload Logic ---
     function setupFileUpload(dropZone, fileInput, browseBtn, fileInfo, filenameSpan, removeBtn, type) {
-        // Fix: Browse button click handler in JS (MV3 CSP compliant)
         browseBtn.addEventListener("click", (e) => {
-            e.stopPropagation(); // Prevent bubbling to dropZone click
+            e.stopPropagation();
             fileInput.click();
         });
 
-        // Click on drop zone also triggers upload (if not clicking browse button)
         dropZone.addEventListener("click", (e) => {
             if (e.target !== browseBtn) fileInput.click();
         });
@@ -371,7 +507,6 @@ document.addEventListener("DOMContentLoaded", async () => {
                 generateCoverLetter: generateCoverLetterCheckbox.checked
             };
 
-            // 1. Call Tailor API
             const tailorResponse = await Api.tailorCv(tailorFile, jd, apiKey, options);
 
             if (!tailorResponse || !tailorResponse.tailoredCv) {
@@ -380,7 +515,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             const { tailoredCv, coverLetter, atsScore } = tailorResponse;
 
-            // 2. Generate PDF (Server-side only)
             const blob = await Api.generatePdf(tailoredCv, selectedTemplate);
             const url = URL.createObjectURL(blob);
             await chrome.downloads.download({
@@ -391,11 +525,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             showSuccess(I18n.t("successTailor") || "CV Tailored & Downloaded!");
             refreshProfile();
 
-            // 3. Show Cover Letter / Results if available
             if (coverLetter || atsScore) {
                 if (coverLetter) {
                     coverLetterText.value = coverLetter;
-                    coverLetterText.parentElement.classList.remove("hidden"); // Ensure text area is visible
+                    coverLetterText.parentElement.classList.remove("hidden");
                 } else {
                     coverLetterText.parentElement.classList.add("hidden");
                 }
@@ -403,10 +536,9 @@ document.addEventListener("DOMContentLoaded", async () => {
                 if (atsScore) {
                     atsScoreBadge.classList.remove("hidden");
                     atsScoreValue.textContent = `${atsScore.overall}%`;
-                    // Color coding
-                    if (atsScore.overall >= 80) atsScoreValue.style.color = "#10b981"; // green
-                    else if (atsScore.overall >= 60) atsScoreValue.style.color = "#f59e0b"; // orange
-                    else atsScoreValue.style.color = "#ef4444"; // red
+                    if (atsScore.overall >= 80) atsScoreValue.style.color = "#10b981";
+                    else if (atsScore.overall >= 60) atsScoreValue.style.color = "#f59e0b";
+                    else atsScoreValue.style.color = "#ef4444";
                 } else {
                     atsScoreBadge.classList.add("hidden");
                 }
@@ -426,6 +558,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     function showAuthView() {
         authView.classList.remove("hidden");
         mainView.classList.add("hidden");
+        stopOAuthPolling();
     }
 
     function showMainView(profile) {
@@ -451,13 +584,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         setTimeout(() => statusMessage.classList.add("hidden"), 3000);
     }
 
+    function showInfo(msg) {
+        statusMessage.textContent = msg;
+        statusMessage.className = "status-message info";
+        statusMessage.classList.remove("hidden");
+    }
+
     function setLoading(btn, isLoading) {
         if (isLoading) {
             btn.dataset.originalText = btn.textContent;
             btn.textContent = I18n.t("processing") || "Processing...";
             btn.disabled = true;
         } else {
-            btn.textContent = btn.dataset.originalText || "Tailor & Download";
+            btn.textContent = btn.dataset.originalText || "Submit";
             updateBtnState();
         }
     }

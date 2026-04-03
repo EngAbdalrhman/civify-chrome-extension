@@ -175,7 +175,129 @@ input:focus {
     text-decoration: underline;
 }
 
-/* Main View Header */
+/* Social Login */
+.social-divider {
+    display: flex;
+    align-items: center;
+    margin: 16px 0;
+    width: 100%;
+}
+
+.social-divider::before,
+.social-divider::after {
+    content: "";
+    flex: 1;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.social-divider span {
+    padding: 0 12px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.social-login-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.btn-social {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: border-color 0.2s, background-color 0.2s, transform 0.1s;
+}
+
+.btn-social:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+.btn-social svg {
+    flex-shrink: 0;
+}
+
+.btn-google:hover {
+    border-color: #4285F4;
+    background-color: rgba(66, 133, 244, 0.05);
+}
+
+.btn-linkedin:hover {
+    border-color: #0A66C2;
+    background-color: rgba(10, 102, 194, 0.05);
+}
+
+/* Advanced API Key Section */
+.advanced-section {
+    width: 100%;
+    margin-top: 12px;
+}
+
+.btn-advanced-toggle {
+    width: 100%;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: color 0.2s;
+}
+
+.btn-advanced-toggle::after {
+    content: "▾";
+    font-size: 0.65rem;
+    transition: transform 0.2s;
+}
+
+.btn-advanced-toggle.expanded::after {
+    transform: rotate(180deg);
+}
+
+.btn-advanced-toggle:hover {
+    color: var(--text-color);
+}
+
+.btn-secondary-style {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+.btn-secondary-style:hover:not(:disabled) {
+    border-color: var(--primary-color);
+    background: linear-gradient(135deg, var(--primary-color), #7c3aed);
+    color: white;
+}
+
+/* Register link */
+.register-link {
+    margin-top: 8px;
+}
+
+/* Info toast */
+#status-message.info {
+    background-color: rgba(99, 102, 241, 0.12);
+    color: var(--primary-color);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+}
 header {
     display: flex;
     justify-content: space-between;
