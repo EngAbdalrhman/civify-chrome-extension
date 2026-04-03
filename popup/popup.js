@@ -10,6 +10,39 @@ document.addEventListener("DOMContentLoaded", async () => {
     const loginEmailInput = document.getElementById("login-email");
     const loginPasswordInput = document.getElementById("login-password");
     const emailLoginBtn = document.getElementById("email-login-btn");
+    
+    // 2FA Section
+    const twoFactorSection = document.getElementById("two-factor-section");
+    const loginOtpInput = document.getElementById("login-otp");
+    const verifyOtpBtn = document.getElementById("verify-otp-btn");
+    const cancelOtpBtn = document.getElementById("cancel-otp-btn");
+    const emailLoginSection = document.getElementById("email-login-section");
+    const socialDivider = document.querySelector(".social-divider");
+    const socialLoginButtons = document.querySelector(".social-login-buttons");
+    const advancedSection = document.querySelector(".advanced-section");
+    const registerLink = document.querySelector(".register-link");
+
+    let pending2faUsername = null;
+
+    function showTwoFactorView() {
+        if(emailLoginSection) emailLoginSection.classList.add("hidden");
+        if(socialDivider) socialDivider.classList.add("hidden");
+        if(socialLoginButtons) socialLoginButtons.classList.add("hidden");
+        if(advancedSection) advancedSection.classList.add("hidden");
+        if(registerLink) registerLink.classList.add("hidden");
+        if(twoFactorSection) twoFactorSection.classList.remove("hidden");
+    }
+
+    function hideTwoFactorView() {
+        if(emailLoginSection) emailLoginSection.classList.remove("hidden");
+        if(socialDivider) socialDivider.classList.remove("hidden");
+        if(socialLoginButtons) socialLoginButtons.classList.remove("hidden");
+        if(advancedSection) advancedSection.classList.remove("hidden");
+        if(registerLink) registerLink.classList.remove("hidden");
+        if(twoFactorSection) twoFactorSection.classList.add("hidden");
+        pending2faUsername = null;
+        if(loginOtpInput) loginOtpInput.value = "";
+    }
 
     // Social Login
     const googleLoginBtn = document.getElementById("google-login-btn");
@@ -252,7 +285,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             const authResponse = await Api.login(email, password);
 
             if (authResponse.requires2FA) {
-                showError("2FA is not yet supported in the extension. Please use API key login.");
+                pending2faUsername = email;
+                showTwoFactorView();
+                showInfo(authResponse.message || "OTP sent to your email.");
                 return;
             }
 
@@ -282,6 +317,37 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
     loginEmailInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") loginPasswordInput.focus();
+    });
+
+    // 2FA Handlers
+    verifyOtpBtn.addEventListener("click", async () => {
+        const otp = loginOtpInput.value.trim();
+        if (!otp) return showError(I18n.t("errorOtp") || "Please enter OTP");
+        
+        setLoading(verifyOtpBtn, true);
+        try {
+            const authResponse = await Api.verify2fa(pending2faUsername, otp);
+            if (!authResponse.accessToken) {
+                showError(authResponse.message || I18n.t("errorLogin") || "Login failed");
+                return;
+            }
+            
+            // Auto-generate API key using access token
+            const keyResponse = await Api.autoGenerateApiKey(authResponse.accessToken);
+            await completeLoginWithApiKey(keyResponse.key);
+            
+            hideTwoFactorView();
+            loginEmailInput.value = "";
+            loginPasswordInput.value = "";
+        } catch (e) {
+            showError(e.message || "Verification failed");
+        } finally {
+            setLoading(verifyOtpBtn, false);
+        }
+    });
+
+    cancelOtpBtn.addEventListener("click", () => {
+        hideTwoFactorView();
     });
 
     // 2. Google OAuth Login
@@ -614,7 +680,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             btn.disabled = true;
         } else {
             btn.textContent = btn.dataset.originalText || "Submit";
-            updateBtnState();
+            btn.disabled = false;
+            if (btn === maskBtn || btn === tailorBtn || btn.id === "mask-btn" || btn.id === "tailor-btn") {
+                updateBtnState();
+            }
         }
     }
 });

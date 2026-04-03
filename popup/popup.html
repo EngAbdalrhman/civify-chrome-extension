@@ -33,6 +33,17 @@
                 <button id="email-login-btn" class="btn-primary" data-i18n="loginBtn">Login</button>
             </div>
 
+            <!-- 2FA Section -->
+            <div id="two-factor-section" class="hidden" style="margin-top: 15px;">
+                <p data-i18n="twoFAInfo" style="margin-bottom: 15px; text-align: center; color: var(--text-color);">Enter the 6-digit code sent to your email.</p>
+                <div class="input-group">
+                    <label for="login-otp" data-i18n="otpLabel">OTP Code</label>
+                    <input type="text" id="login-otp" data-i18n="otpPlaceholder" placeholder="Enter code">
+                </div>
+                <button id="verify-otp-btn" class="btn-primary" data-i18n="verifyBtn">Verify</button>
+                <button id="cancel-otp-btn" class="btn-secondary" style="margin-top: 10px;" data-i18n="cancelBtn">Cancel</button>
+            </div>
+
             <!-- Social Login -->
             <div class="social-divider">
                 <span data-i18n="socialLoginTitle">Or continue with</span>
