@@ -115,62 +115,51 @@ document.addEventListener("DOMContentLoaded", async () => {
         showMainView(profile);
     }
 
-    // --- OAuth Polling ---
-    // After opening OAuth tab, poll for the pending token
-    let oauthPollInterval = null;
-
-    function startOAuthPolling() {
+    async function startOAuthLogin(provider) {
         showInfo(I18n.t("oauthWaiting"));
+        try {
+            const redirectUri = chrome.identity.getRedirectURL("oauth2");
+            const authUrl = await Api.getOAuthUrl(provider, redirectUri);
+            const responseUrl = await new Promise((resolve, reject) => {
+                chrome.identity.launchWebAuthFlow(
+                    { url: authUrl, interactive: true },
+                    (callbackUrl) => {
+                        if (chrome.runtime.lastError) {
+                            reject(new Error(chrome.runtime.lastError.message));
+                            return;
+                        }
+                        resolve(callbackUrl);
+                    }
+                );
+            });
 
-        // Clear any stale oauth data
-        chrome.storage.local.remove(["oauthPendingToken", "oauthError", "oauthTimestamp"]);
-
-        oauthPollInterval = setInterval(async () => {
-            const data = await chrome.storage.local.get(["oauthPendingToken", "oauthError", "oauthTimestamp"]);
-
-            // Check for timeout (60 seconds)
-            if (data.oauthTimestamp && (Date.now() - data.oauthTimestamp > 60000)) {
-                stopOAuthPolling();
-                showError(I18n.t("errorLogin"));
-                return;
+            if (!responseUrl) {
+                throw new Error("OAuth cancelled");
             }
 
-            // Check for error
-            if (data.oauthError) {
-                stopOAuthPolling();
-                await chrome.storage.local.remove(["oauthError", "oauthTimestamp"]);
-                showError(data.oauthError);
-                return;
+            const parsed = new URL(responseUrl);
+            const error = parsed.searchParams.get("error");
+            if (error) {
+                throw new Error(error);
             }
 
-            // Check for success
-            if (data.oauthPendingToken) {
-                stopOAuthPolling();
-                try {
-                    const accessToken = data.oauthPendingToken;
-                    await chrome.storage.local.remove(["oauthPendingToken", "oauthTimestamp"]);
-
-                    // Auto-generate API key using the access token
-                    const keyResponse = await Api.autoGenerateApiKey(accessToken);
-                    await completeLoginWithApiKey(keyResponse.key);
-                    showSuccess(I18n.t("loginBtn") + " ✓");
-                } catch (e) {
-                    showError(e.message || I18n.t("errorLogin"));
-                }
+            const code = parsed.searchParams.get("code");
+            if (!code) {
+                throw new Error("Missing OAuth code");
             }
-        }, 500);
-    }
 
-    function stopOAuthPolling() {
-        if (oauthPollInterval) {
-            clearInterval(oauthPollInterval);
-            oauthPollInterval = null;
+            const exchange = await Api.exchangeOAuthCode(code);
+            const keyResponse = await Api.autoGenerateApiKey(exchange.accessToken);
+            await completeLoginWithApiKey(keyResponse.key);
+            showSuccess(I18n.t("loginBtn") + " ✓");
+        } catch (e) {
+            showError(e.message || I18n.t("errorLogin"));
         }
     }
 
     // --- Initialization ---
     try {
-        const result = await chrome.storage.local.get(["apiKey", "userProfile", "theme", "lang", "oauthPendingToken", "oauthError", "oauthTimestamp"]);
+        const result = await chrome.storage.local.get(["apiKey", "userProfile", "theme", "lang"]);
 
         // Apply persisted settings
         applyTheme(result.theme || "dark");
@@ -180,23 +169,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (result.apiKey) {
             showMainView(result.userProfile);
             refreshProfile();
-        } else if (result.oauthPendingToken) {
-            // OAuth completed while popup was closed — complete login now
-            showAuthView();
-            showInfo(I18n.t("oauthWaiting"));
-            try {
-                await chrome.storage.local.remove(["oauthPendingToken", "oauthError", "oauthTimestamp"]);
-                const keyResponse = await Api.autoGenerateApiKey(result.oauthPendingToken);
-                await completeLoginWithApiKey(keyResponse.key);
-                showSuccess(I18n.t("loginBtn") + " ✓");
-            } catch (e) {
-                showError(e.message || I18n.t("errorLogin"));
-            }
-        } else if (result.oauthError) {
-            // OAuth failed while popup was closed
-            await chrome.storage.local.remove(["oauthError", "oauthTimestamp"]);
-            showAuthView();
-            showError(result.oauthError);
         } else {
             showAuthView();
         }
@@ -352,24 +324,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // 2. Google OAuth Login
     googleLoginBtn.addEventListener("click", async () => {
-        try {
-            const oauthUrl = await Api.getOAuthUrl("google");
-            chrome.tabs.create({ url: oauthUrl });
-            startOAuthPolling();
-        } catch (e) {
-            showError(e.message || I18n.t("errorLogin"));
-        }
+        await startOAuthLogin("google");
     });
 
     // 3. LinkedIn OAuth Login
     linkedinLoginBtn.addEventListener("click", async () => {
-        try {
-            const oauthUrl = await Api.getOAuthUrl("linkedin");
-            chrome.tabs.create({ url: oauthUrl });
-            startOAuthPolling();
-        } catch (e) {
-            showError(e.message || I18n.t("errorLogin"));
-        }
+        await startOAuthLogin("linkedin");
     });
 
     // 4. API Key Login (Advanced - toggle visibility)
@@ -399,7 +359,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Logout
     logoutBtn.addEventListener("click", async () => {
-        stopOAuthPolling();
         await chrome.storage.local.remove(["apiKey", "userProfile"]);
         maskFile = null;
         tailorFile = null;
@@ -641,7 +600,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     function showAuthView() {
         authView.classList.remove("hidden");
         mainView.classList.add("hidden");
-        stopOAuthPolling();
     }
 
     function showMainView(profile) {
