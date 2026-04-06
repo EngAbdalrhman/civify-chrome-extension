@@ -34,7 +34,7 @@ body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     margin: 0;
     width: 380px;
-    min-height: 520px;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
 }
@@ -56,7 +56,7 @@ body {
 }
 
 .view {
-    padding: 24px;
+    padding: 16px;
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -68,23 +68,23 @@ body {
 
 /* Auth View */
 #auth-view {
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
     text-align: center;
 }
 
 .logo-container {
-    margin-bottom: 8px;
+    margin-bottom: 4px;
 }
 
 .logo-container img {
-    width: 64px;
-    height: 64px;
-    margin-bottom: 12px;
+    width: 52px;
+    height: 52px;
+    margin-bottom: 6px;
 }
 
 .logo-container h1 {
-    font-size: 2rem;
+    font-size: 1.55rem;
     margin: 0;
     background: linear-gradient(135deg, #818cf8, #c4b5fd);
     -webkit-background-clip: text;
@@ -95,13 +95,13 @@ body {
 
 .logo-container p {
     color: var(--text-muted);
-    font-size: 0.875rem;
-    margin-top: 4px;
+    font-size: 0.78rem;
+    margin-top: 2px;
 }
 
 .input-group {
     width: 100%;
-    margin: 24px 0;
+    margin: 12px 0;
     text-align: left;
 }
 
@@ -134,7 +134,7 @@ input:focus {
 
 .btn-primary {
     width: 100%;
-    padding: 11px;
+    padding: 10px;
     background: linear-gradient(135deg, var(--primary-color), #7c3aed);
     color: white;
     border: none;
@@ -162,7 +162,7 @@ input:focus {
 .helper-text {
     font-size: 0.75rem;
     color: var(--text-muted);
-    margin-top: 16px;
+    margin-top: 10px;
 }
 
 .helper-text a {
@@ -179,7 +179,7 @@ input:focus {
 .social-divider {
     display: flex;
     align-items: center;
-    margin: 16px 0;
+    margin: 12px 0 10px;
     width: 100%;
 }
 
@@ -210,7 +210,7 @@ input:focus {
     justify-content: center;
     gap: 10px;
     width: 100%;
-    padding: 10px;
+    padding: 8px;
     border: 1px solid var(--border-color);
     border-radius: 8px;
     background-color: var(--card-bg);
@@ -243,7 +243,7 @@ input:focus {
 /* Advanced API Key Section */
 .advanced-section {
     width: 100%;
-    margin-top: 12px;
+    margin-top: 8px;
 }
 
 .btn-advanced-toggle {
@@ -289,7 +289,7 @@ input:focus {
 
 /* Register link */
 .register-link {
-    margin-top: 8px;
+    margin-top: 4px;
 }
 
 /* Info toast */
@@ -302,8 +302,8 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
-    padding-bottom: 12px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -477,7 +477,7 @@ header {
     background-color: var(--card-bg);
     padding: 4px;
     border-radius: 10px;
-    margin-bottom: 16px;
+    margin-bottom: 10px;
 }
 
 .tab-btn {
@@ -514,7 +514,7 @@ header {
 .upload-area {
     border: 2px dashed var(--border-color);
     border-radius: 12px;
-    padding: 28px 16px;
+    padding: 18px 12px;
     text-align: center;
     transition: all 0.2s;
     background-color: rgba(99, 102, 241, 0.03);
@@ -533,14 +533,14 @@ header {
 }
 
 .upload-area .icon {
-    font-size: 2rem;
-    margin-bottom: 8px;
+    font-size: 1.6rem;
+    margin-bottom: 4px;
 }
 
 .upload-area p {
     color: var(--text-muted);
     font-size: 0.85rem;
-    margin: 8px 0 12px;
+    margin: 4px 0 8px;
 }
 
 .btn-secondary {
@@ -596,7 +596,7 @@ header {
 }
 
 .job-input-area {
-    margin: 12px 0;
+    margin: 8px 0;
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -652,7 +652,7 @@ textarea {
     font-family: inherit;
     font-size: 0.85rem;
     resize: none;
-    min-height: 80px;
+    min-height: 72px;
     box-sizing: border-box;
     transition: border-color 0.2s, background-color 0.2s;
 }
@@ -740,7 +740,57 @@ textarea:focus {
 
 /* Template Selector */
 .options-group {
-    margin: 16px 0;
+    margin: 10px 0;
+}
+
+/* Compact mode for short popup heights */
+@media (max-height: 700px) {
+    .view {
+        padding: 12px;
+    }
+
+    .logo-container img {
+        width: 44px;
+        height: 44px;
+        margin-bottom: 4px;
+    }
+
+    .logo-container h1 {
+        font-size: 1.4rem;
+    }
+
+    .logo-container p {
+        font-size: 0.74rem;
+    }
+
+    .input-group {
+        margin: 8px 0;
+    }
+
+    .input-group label {
+        margin-bottom: 6px;
+    }
+
+    .btn-primary {
+        padding: 9px;
+    }
+
+    .social-divider {
+        margin: 10px 0 8px;
+    }
+
+    .btn-social {
+        padding: 7px;
+        font-size: 0.82rem;
+    }
+
+    .upload-area {
+        padding: 14px 10px;
+    }
+
+    textarea {
+        min-height: 62px;
+    }
 }
 
 .group-label {
