@@ -2,7 +2,6 @@
   "manifest_version": 3,
   "name": "Civify Resume Tailor",
   "version": "1.2.0",
-  "key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0g/EjuT6iXoThMhEdF0B\ncFVRgatvS2XVnALoZS+TbTt93JfBVG9YnRblh6SSsuSWzsjqohBAFJHv+zVgmChE\nyastJFw9K1gpCs78WfLE6i30txh7H7spwsNnJYCtViVlYfFTiVpLUBLZZWEXIXrf\n7hLd4K7N3m1dhW5M6V+eaJpPwihZXZ3DdgQi/aGEHSYZ9sy4YsH0CgbknCitdc85\ncBe3qz6X1eIVdVWHDHd3Jsaf/S52d6Ly9TAMjTrIq2+n8TCYlRRI02l6XRXyGRkD\nGWo+ET01bSbOSxn/7R9s3ArWlXo0McdWRTt9jxotLlcA1uzybVlMO4O8XotWfLiX\nEQIDAQAB\n-----END PUBLIC KEY-----",
   "description": "Mask PII and tailor your resume for job applications using Civify AI.",
   "icons": {
     "16": "icons/icon16.png",
@@ -14,15 +13,12 @@
     "scripting",
     "identity",
     "storage",
-    "downloads",
-    "tabs"
+    "downloads"
   ],
   "host_permissions": [
     "*://*.linkedin.com/*",
     "*://*.civify.cv/*",
-    "*://civify.cv/*",
-    "*://stg.civify.cv/*",
-    "http://localhost:8080/*"
+    "*://civify.cv/*"
   ],
   "action": {
     "default_popup": "popup/popup.html",
